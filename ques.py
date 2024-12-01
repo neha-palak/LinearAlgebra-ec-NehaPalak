@@ -764,5 +764,3 @@ class VectorSet:
         
 # QUESTION 5 
 # Added required functions in the Matrix class above
-
-# QUESTION 6
