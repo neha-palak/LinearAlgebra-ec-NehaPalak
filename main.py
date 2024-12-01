@@ -1,6 +1,6 @@
-from Q1 import ComplexNumber
-from Q1 import Vector
-from Q1 import Matrix
+from ques import ComplexNumber
+from ques import Vector
+from ques import Matrix
 
 def main():
     # (a) ComplexNumber Examples
@@ -54,6 +54,7 @@ def main():
     # (a)
     m1 = Matrix(float, 2, 2, [1, 0, 0, 1])  # Identity Matrix
 
+    print("\n=== Matrix Properties ===")
     print("Matrix:")
     print(m1)
     print("Is Zero Matrix?", m1.is_zero())
@@ -61,12 +62,12 @@ def main():
     print("Is Hermitian?", m1.is_hermitian())
     print("Is Orthogonal?", m1.is_orthogonal())
     print("Is Unitary?", m1.is_unitary())
-    print("Is Scalar?", m1.is_scalar())
     print("Is Singular?", m1.is_singular())
     print("Is Invertible?", m1.is_invertible())
-    print("Is Identity?", m1.is_identity())
     print("Is Nilpotent?", m1.is_nilpotent())
     print("Has LU Decomposition?", m1.has_lu_decomposition())
+    print("Is Scalar?", m1.is_scalar())
+    print("Is Identity?", m1.is_identity())
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+
 #Question 1
 
 class ComplexNumber:
@@ -66,6 +67,7 @@ class Matrix:
             self.entries = [field(x) for x in entries]
         else:
             self.entries = [field(0)] * (rows * cols)
+
 
     @classmethod
     def from_vectors(cls, vectors):
@@ -137,55 +139,19 @@ class Matrix:
             for i in range(self.rows)
         )
     
-    # Question 2
+# Question 2
 
-    def __init__(self, field, rows, cols, entries=None):
-        self.field = field
-        self.rows = rows
-        self.cols = cols
-        self.entries = entries or [[0 for _ in range(cols)] for _ in range(rows)]
+    # Property checking functions
+    def get(self, r, c):
+        """Helper function to access matrix elements"""
+        return self.entries[r * self.cols + c]
 
-    def __getitem__(self, index):
-        return self.entries[index]
-
-    def __setitem__(self, index, value):
-        self.entries[index] = value
-
-    def __str__(self):
-        return "\n".join(" ".join(f"{val:.2f}" for val in row) for row in self.entries)
-
-    def __add__(self, other):
-        if self.rows != other.rows or self.cols != other.cols:
-            raise ValueError("Matrix dimensions do not match for addition.")
-        result = Matrix(self.field, self.rows, self.cols)
+    def is_zero(self):
         for i in range(self.rows):
             for j in range(self.cols):
-                result.entries[i][j] = self.entries[i][j] + other.entries[i][j]
-        return result
-
-    def __mul__(self, other):
-        if self.cols != other.rows:
-            raise ValueError("Matrix dimensions do not match for multiplication.")
-        result = Matrix(self.field, self.rows, other.cols)
-        for i in range(self.rows):
-            for j in range(other.cols):
-                result.entries[i][j] = sum(
-                    self.entries[i][k] * other.entries[k][j] for k in range(self.cols)
-                )
-        return result
-
-    def transpose(self):
-        return Matrix(self.field, self.cols, self.rows, [[self.entries[j][i] for j in range(self.rows)] for i in range(self.cols)])
-
-    def conjugate(self):
-        return Matrix(self.field, self.rows, self.cols, [[val.conjugate() if isinstance(val, ComplexNumber) else val for val in row] for row in self.entries])
-
-    def transpose_conjugate(self):
-        return self.conjugate().transpose()
-
-    # --- Property-checking functions ---
-    def is_zero(self):
-        return all(all(val == 0 for val in row) for row in self.entries)
+                if self.get(i, j) != 0:
+                    return False
+        return True
 
     def is_square(self):
         return self.rows == self.cols
@@ -195,7 +161,7 @@ class Matrix:
             return False
         for i in range(self.rows):
             for j in range(self.cols):
-                if self.entries[i][j] != self.entries[j][i]:
+                if self.entries[i * self.cols + j] != self.entries[j * self.cols + i]:
                     return False
         return True
 
@@ -204,37 +170,46 @@ class Matrix:
             return False
         for i in range(self.rows):
             for j in range(self.cols):
-                if self.entries[i][j] != (self.entries[j][i].conjugate() if isinstance(self.entries[j][i], ComplexNumber) else self.entries[j][i]):
+                if self.entries[i * self.cols + j] != (self.entries[j * self.cols + i].conjugate() if isinstance(self.entries[j * self.cols + i], ComplexNumber) else self.entries[j * self.cols + i]):
                     return False
         return True
 
+    
     def is_orthogonal(self):
         if not self.is_square():
             return False
-        identity = Matrix(self.field, self.rows, self.cols, [[1 if i == j else 0 for j in range(self.cols)] for i in range(self.rows)])
+        identity = Matrix(self.field, self.rows, self.cols, [1 if i == j else 0 for i in range(self.rows) for j in range(self.cols)])
         transpose = self.transpose()
-        product = transpose * self
+        product = transpose * self  # Matrix multiplication
         return product == identity
-
+    
     def is_unitary(self):
         if not self.is_square():
             return False
-        identity = Matrix(self.field, self.rows, self.cols, [[1 if i == j else 0 for j in range(self.cols)] for i in range(self.rows)])
+        identity = Matrix(self.field, self.rows, self.cols, [1 if i == j else 0 for i in range(self.rows) for j in range(self.cols)])
         transpose_conjugate = self.transpose_conjugate()
         product = transpose_conjugate * self
         return product == identity
 
     def is_scalar(self):
+    # Create a local 2D matrix from the flat list entries
+        entries_2d = [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+        
         if not self.is_square():
             return False
-        scalar_value = self.entries[0][0]
+        
+        # Check if all diagonal elements are the same and non-diagonal elements are 0
+        scalar_value = entries_2d[0][0]
+        
         for i in range(self.rows):
             for j in range(self.cols):
-                if i == j and self.entries[i][j] != scalar_value:
-                    return False
-                if i != j and self.entries[i][j] != 0:
+                print(f"Checking element ({i},{j}): {entries_2d[i][j]}")  # Debug print
+
+                if (i == j and entries_2d[i][j] != scalar_value) or (i != j and entries_2d[i][j] != 0):
                     return False
         return True
+
+
 
     def is_singular(self):
         return not self.is_invertible()
@@ -245,14 +220,25 @@ class Matrix:
         determinant = self.determinant()
         return determinant != 0
 
+    
+
+    def _convert_to_2d(self):
+        return [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+
     def is_identity(self):
+        entries_2d = self._convert_to_2d()
+        
         if not self.is_square():
             return False
+        
         for i in range(self.rows):
             for j in range(self.cols):
-                if (i == j and self.entries[i][j] != 1) or (i != j and self.entries[i][j] != 0):
+                print(f"Checking element ({i},{j}): {entries_2d[i][j]}")  # Debug print
+
+                if (i == j and entries_2d[i][j] != 1) or (i != j and entries_2d[i][j] != 0):
                     return False
         return True
+
 
     def is_nilpotent(self, max_power=10):
         if not self.is_square():
@@ -267,23 +253,22 @@ class Matrix:
     def is_diagonalizable(self):
         if not self.is_square():
             return False
-        # Simplified check: a matrix is diagonalizable if it has distinct eigenvalues.
-        # In a full implementation, we'd calculate the eigenvalues and check their multiplicity.
-        return True  # Placeholder
+        # Simplified check: assume it's diagonalizable if it's square
+        return True
 
     def has_lu_decomposition(self):
         if not self.is_square():
             return False
-        # Simplified check: LU decomposition exists if the matrix is non-singular.
-        return self.is_invertible()
+        return self.is_invertible()  # LU decomposition exists for invertible matrices
+
 
     def determinant(self):
         if not self.is_square():
             raise ValueError("Determinant is only defined for square matrices.")
         if self.rows == 1:
-            return self.entries[0][0]
+            return self.entries[0]
         if self.rows == 2:
-            return self.entries[0][0] * self.entries[1][1] - self.entries[0][1] * self.entries[1][0]
+            return self.entries[0] * self.entries[3] - self.entries[1] * self.entries[2]
         # Recursive determinant calculation for larger matrices
         det = 0
         for c in range(self.cols):
@@ -292,4 +277,19 @@ class Matrix:
                 minor.entries[i - 1] = self.entries[i][:c] + self.entries[i][c + 1:]
             det += ((-1) ** c) * self.entries[0][c] * minor.determinant()
         return det
+    
+# === Question 3 ====
 
+# Part (a)
+def size(self):
+        """Returns the size of the matrix (rows, cols)."""
+        return self.rows, self.cols
+
+def rank(self):
+        """Returns the rank of the matrix."""
+        non_zero_rows = [row for row in self.entries if any(x != 0 for x in row)]
+        return len(non_zero_rows)
+
+def nullity(self):
+        """Returns the nullity of the matrix (cols - rank)."""
+        return self.cols - self.rank()
