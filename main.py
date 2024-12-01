@@ -113,6 +113,7 @@ def main():
 
 
 # QUESTION 4
+# System of Linear Equations
 
     # (a) System of Linear Equations Example
     A = [[2, 3, -1], [4, -1, 2], [1, 2, 3]]
@@ -139,6 +140,68 @@ def main():
     print("Solution using PLU Decomposition:")
     solution_plu = system.plu_decomposition()
     print(solution_plu)
+
+
+# QUESTION 5
+# Invertible Matrices operations
+    # (a) Check if the matrix is square and invertible
+    print("=== Matrix Operations ===")
+    m1 = Matrix(float, 3, 3, [2, 1, 1, 1, 3, 2, 1, 0, 3])
+    print("Matrix 1:")
+    print(m1)
+    print("Is Matrix 1 square?", m1.is_square())
+    print("Is Matrix 1 invertible?", m1.is_invertible())
+    
+
+    # (b) Inverse of Matrix by Row Reduction
+    print("\nInverse of Matrix by Row Reduction:")
+    inverse_row_reduction = m1.row_reduce()
+    if inverse_row_reduction:
+        print(inverse_row_reduction)
+    else:
+        print("Matrix is not invertible by row reduction.")
+
+    # (c) Inverse of Matrix by Adjoint
+    print("\nInverse of Matrix by Adjoint:")
+    inverse_adjoint = m1.inverse_by_adjoint()
+    if inverse_adjoint:
+        print(inverse_adjoint)
+    else:
+        print("Matrix is not invertible by adjoint.")
+
+
+ # QUESTION 6: Coordinates and Change of Basis
+    print("\n=== Coordinates and Change of Basis ===")
+    
+    v1 = Vector(float, 2, [1, 0])
+    v2 = Vector(float, 2, [0, 1])
+    set_S = VectorSet([v1, v2])
+    v3 = Vector(float, 2, [3, 4])
+    print(f"Is vector {v3.coordinates} in the span of {[vec.coordinates for vec in set_S.vectors]}?")
+    print(set_S.is_in_span(v3))
+
+    print("Linear combination representation of v3:")
+    print(set_S.linear_combination(v3))
+
+    S1 = VectorSet([v1, v2])
+    S2 = VectorSet([v1, Vector(float, 2, [1, 1])])
+    print("Do S1 and S2 span the same subspace?")
+    print(VectorSet.span_equal(S1, S2))
+
+    basis = [v1, v2]
+    print("Coordinates of v3 in the basis:", set_S.coordinates_in_basis(basis, v3))
+    coords = [3, 4]
+    reconstructed_vector = set_S.vector_from_coordinates(basis, coords)
+    print("Vector reconstructed from coordinates:", reconstructed_vector.coordinates)
+
+    B1 = [v1, v2]
+    B2 = [Vector(float, 2, [1, 1]), Vector(float, 2, [-1, 1])]
+    print("Change of basis matrix from B1 to B2:")
+    print(VectorSet.change_of_basis_matrix(B1, B2))
+
+    print("Coordinates of v3 in B2:")
+    print(VectorSet.change_coordinates(B1, B2, set_S.coordinates_in_basis(B1, v3)))
+
 
 
 if __name__ == "__main__":

@@ -143,6 +143,20 @@ class Matrix:
             for i in range(self.rows)
         )
     
+    def multiply(self, vector):
+        """
+        Multiplies the matrix with a vector.
+        """
+        if not isinstance(vector, Vector) or self.cols != vector.length:
+            raise ValueError("Matrix columns must match vector length.")
+        
+        result = [self.field(0)] * self.rows
+        for i in range(self.rows):
+            row = self.entries[i * self.cols:(i + 1) * self.cols]
+            result[i] = sum(row[j] * vector.coordinates[j] for j in range(self.cols))
+        
+        return Vector(self.field, self.rows, result)
+    
 # Question 2
 
     # Property checking functions
@@ -217,6 +231,8 @@ class Matrix:
 
     def is_singular(self):
         return not self.is_invertible()
+    
+    
 
     def is_invertible(self):
         if not self.is_square():
@@ -269,18 +285,26 @@ class Matrix:
     def determinant(self):
         if not self.is_square():
             raise ValueError("Determinant is only defined for square matrices.")
+        
+        # Convert the flat entries list to a 2D list for easier manipulation
+        matrix_2d = [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+        
         if self.rows == 1:
-            return self.entries[0]
+            return matrix_2d[0][0]  # Return the only element in a 1x1 matrix
         if self.rows == 2:
-            return self.entries[0] * self.entries[3] - self.entries[1] * self.entries[2]
-        # Recursive determinant calculation for larger matrices
+            # Determinant of a 2x2 matrix: ad - bc
+            return matrix_2d[0][0] * matrix_2d[1][1] - matrix_2d[0][1] * matrix_2d[1][0]
+        
+        # For larger matrices, use cofactor expansion (Laplace expansion)
         det = 0
         for c in range(self.cols):
-            minor = Matrix(self.field, self.rows - 1, self.cols - 1)
-            for i in range(1, self.rows):
-                minor.entries[i - 1] = self.entries[i][:c] + self.entries[i][c + 1:]
-            det += ((-1) ** c) * self.entries[0][c] * minor.determinant()
+            # Create the minor matrix by excluding the first row and current column
+            minor = [row[:c] + row[c + 1:] for row in matrix_2d[1:]]
+            # Recursive determinant calculation for the minor matrix
+            cofactor = ((-1) ** c) * matrix_2d[0][c] * Matrix(self.field, self.rows - 1, self.cols - 1, [elem for row in minor for elem in row]).determinant()
+            det += cofactor
         return det
+
     
 # === Question 3 ====
 
@@ -410,6 +434,116 @@ class Matrix:
                 L[j][i] = (A[j][i] - sum(L[j][k] * U[k][i] for k in range(i))) / U[i][i]
 
         return Matrix(self.field, rows, cols, [x for row in P for x in row]), Matrix(self.field, rows, cols, [x for row in L for x in row]), Matrix(self.field, rows, cols, [x for row in U for x in row])
+    
+    def _determinant_recursive(self, matrix):
+        # Base case for 2x2 matrix
+        if len(matrix) == 2:
+            return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+        
+        det = 0
+        for i in range(len(matrix)):
+            minor = [row[:i] + row[i + 1:] for row in matrix[1:]]
+            det += (-1) ** i * matrix[0][i] * self._determinant_recursive(minor)
+        return det
+
+    def row_reduce(self):
+        if not self.is_square():
+            raise ValueError("Row reduction is only defined for square matrices.")
+
+        n = self.rows  # Number of rows (also number of columns for a square matrix)
+        
+        # Convert entries from flat list to 2D list for easier manipulation
+        matrix_2d = [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+        
+        # Create an augmented matrix [A | I]
+        augmented = [row[:] + [1 if i == j else 0 for j in range(n)] for i, row in enumerate(matrix_2d)]
+
+        # Perform row reduction (Gaussian elimination)
+        for i in range(n):
+            # Find the pivot row and swap if necessary
+            if augmented[i][i] == 0:
+                for j in range(i + 1, n):
+                    if augmented[j][i] != 0:
+                        augmented[i], augmented[j] = augmented[j], augmented[i]
+                        break
+
+            # Normalize the pivot row
+            pivot = augmented[i][i]
+            if pivot == 0:
+                raise ValueError("Matrix is singular and cannot be inverted.")
+            
+            for col in range(2 * n):  # Scale the pivot row to make pivot element = 1
+                augmented[i][col] /= pivot
+
+            # Eliminate other rows
+            for j in range(n):
+                if j != i:
+                    factor = augmented[j][i]
+                    for col in range(2 * n):
+                        augmented[j][col] -= factor * augmented[i][col]
+
+        # Extract the right half of the augmented matrix as the inverse
+        inverse = [row[n:] for row in augmented]
+        
+        # Convert the inverse back to a flat list for consistency with original format
+        inverse_flat = [item for sublist in inverse for item in sublist]
+        
+        return Matrix(self.field, n, n, inverse_flat)
+    
+    def transpose_matrix(self, matrix):
+        """Transposes a given matrix (flips rows and columns)."""
+        return [[matrix[j][i] for j in range(len(matrix))] for i in range(len(matrix[0]))]
+
+
+
+    def adjoint(self):
+        if not self.is_square():
+            raise ValueError("Adjoint is only defined for square matrices.")
+
+        n = self.rows  # Size of the square matrix
+        # Convert flat list entries to a 2D matrix for easier manipulation
+        matrix_2d = [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+
+        adj = []
+        for i in range(n):
+            adj_row = []
+            for j in range(n):
+                # Calculate minor of matrix excluding row i and column j
+                minor = [row[:j] + row[j + 1:] for row in (matrix_2d[:i] + matrix_2d[i + 1:])]
+                # Calculate cofactor (determinant of the minor * (-1)^(i+j))
+                cofactor = ((-1) ** (i + j)) * self.determinant_of_minor(minor)
+                adj_row.append(cofactor)
+            adj.append(adj_row)
+
+        # Transpose of the cofactor matrix (adjoint matrix)
+        adjoint_matrix = self.transpose_matrix(adj)
+        return Matrix(self.field, n, n, [item for sublist in adjoint_matrix for item in sublist])
+
+    def determinant_of_minor(self, minor):
+        """Calculate the determinant of a matrix (used for minors in adjoint calculation)."""
+        minor_size = len(minor)
+        if minor_size == 1:
+            return minor[0][0]  # If it's a 1x1 matrix, return the element itself.
+        
+        # Recursive calculation for larger minors
+        det = 0
+        for col in range(minor_size):
+            submatrix = [row[:col] + row[col + 1:] for row in minor[1:]]  # Create submatrix by removing row 0 and column col
+            det += ((-1) ** col) * minor[0][col] * self.determinant_of_minor(submatrix)
+        return det
+
+
+    def inverse_by_adjoint(self):
+        if not self.is_invertible():
+            raise ValueError("Matrix is not invertible.")
+
+        adjoint_matrix = self.adjoint()  # Get the adjoint matrix
+        det = self.determinant()  # Get the determinant of the original matrix
+
+        # Divide the adjoint matrix by the determinant to get the inverse
+        inverse_matrix_entries = [entry / det for entry in adjoint_matrix.entries]
+        return Matrix(self.field, self.rows, self.cols, inverse_matrix_entries)
+
     
 
 # === QUESTION 4 ===
@@ -556,6 +690,79 @@ class VectorSet:
         other_rank = self.rank(other.vectors)
         
         return self_rank <= other_rank
+    
+    def is_in_span(self, vector):
+        """
+        Check if a vector is in the linear span of the vector set.
+        """
+        system = LinearSystem([vec.coordinates for vec in self.vectors], vector.coordinates)
+        return system.is_consistent()
+
+    def linear_combination(self, vector):
+        """
+        Find a representation of the vector as a linear combination of the vectors in the set.
+        """
+        system = LinearSystem([vec.coordinates for vec in self.vectors], vector.coordinates)
+        if not system.is_consistent():
+            raise ValueError("Vector is not in the span of the set.")
+        return system.gaussian_elimination()
+
+    @staticmethod
+    def span_equal(set1, set2):
+        """
+        Check if two vector sets span the same subspace.
+        """
+        for vec in set2.vectors:
+            if not VectorSet(set1.vectors).is_in_span(vec):
+                return False
+        for vec in set1.vectors:
+            if not VectorSet(set2.vectors).is_in_span(vec):
+                return False
+        return True
+
+    def coordinates_in_basis(self, basis, vector):
+        """
+        Compute the coordinates of a vector in terms of the given ordered basis.
+        """
+        system = LinearSystem([vec.coordinates for vec in basis], vector.coordinates)
+        if not system.is_consistent():
+            raise ValueError("Vector is not in the span of the basis.")
+        return system.gaussian_elimination()
+
+    def vector_from_coordinates(self, basis, coordinates):
+        """
+        Reconstruct a vector from its coordinates in the given ordered basis.
+        """
+        vector = [0] * len(basis[0].coordinates)
+        for coeff, base_vec in zip(coordinates, basis):
+            for i in range(len(vector)):
+                vector[i] += coeff * base_vec.coordinates[i]
+        return Vector(type(vector[0]), len(vector), vector)
+
+    @staticmethod
+    def change_of_basis_matrix(basis1, basis2):
+        """
+        Calculate the change of basis matrix from basis1 to basis2.
+        """
+        matrix = []
+        for vec in basis2:
+            coordinates = VectorSet(basis1).coordinates_in_basis(basis1, vec)
+            matrix.append(coordinates)
+        return Matrix(type(matrix[0][0]), len(matrix), len(matrix[0]), sum(matrix, []))
+
+    
+    @staticmethod
+    def change_coordinates(B1, B2, coordinates):
+        """
+        Computes the coordinates of a vector in basis B2, given its coordinates in basis B1.
+        """
+        change_matrix = VectorSet.change_of_basis_matrix(B1, B2)
+        vector_in_B1 = Vector(float, len(coordinates), coordinates)
+        return change_matrix.multiply(vector_in_B1).coordinates  # Return raw coordinates
+
 
         
-    
+# QUESTION 5 
+# Added required functions in the Matrix class above
+
+# QUESTION 6
