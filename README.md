@@ -1,2 +1,4 @@
 # LinearAlgebra-ec-NehaPalak
-# each Qn.py corresponds to the nth question number of the CS extra credit assignment
+# ques.py : Contains the implementation of solutions for each question.
+# main.py : Executes all the solutions and demonstrates their outputs.
+# Execute by the running the following command : python main.py# LinearAlgebra-ec-NehaPalak
