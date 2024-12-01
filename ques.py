@@ -51,6 +51,10 @@ class Vector:
         return Vector(self.field, self.length, [
             self.coordinates[i] + other.coordinates[i] for i in range(self.length)
         ])
+    
+    def length(self):
+        """Returns the length of the vector."""
+        return self.length
 
     def __str__(self):
         return str(self.coordinates)
@@ -280,16 +284,277 @@ class Matrix:
     
 # === Question 3 ====
 
-# Part (a)
-def size(self):
+    # Part (a)
+    def size(self):
         """Returns the size of the matrix (rows, cols)."""
-        return self.rows, self.cols
+        return (self.rows, self.cols)
 
-def rank(self):
+    def rank(self):
         """Returns the rank of the matrix."""
-        non_zero_rows = [row for row in self.entries if any(x != 0 for x in row)]
-        return len(non_zero_rows)
+        # Convert matrix to 2D list for row operations
+        matrix_2d = [self.entries[i:i + self.cols] for i in range(0, len(self.entries), self.cols)]
+        # Perform Gaussian elimination to find the rank
+        rank = 0
+        for i in range(self.rows):
+            if any(matrix_2d[i]):
+                rank += 1
+        return rank
 
-def nullity(self):
-        """Returns the nullity of the matrix (cols - rank)."""
+    def nullity(self):
+        """Returns the nullity of the matrix (dimension of the null space)."""
+        # Nullity = Number of columns - Rank
         return self.cols - self.rank()
+
+    def __str__(self):
+        return '\n'.join(
+            ' '.join(str(self.entries[i * self.cols + j]) for j in range(self.cols))
+            for i in range(self.rows)
+        )
+    
+    def rref(self, show_operations=False):
+        # Perform Gaussian elimination manually
+        A = [row[:] for row in self._convert_to_2d()]  # Make a copy of the matrix
+        row_ops = []  # To track row operations
+        rows, cols = self.rows, self.cols
+
+        lead = 0
+        for r in range(rows):
+            if lead >= cols:
+                break
+            i = r
+            while A[i][lead] == 0:
+                i += 1
+                if i == rows:
+                    i = r
+                    lead += 1
+                    if cols == lead:
+                        return A, row_ops
+            A[i], A[r] = A[r], A[i]
+            if show_operations:
+                row_ops.append(f"Swap row {i} with row {r}")
+
+            lv = A[r][lead]
+            for j in range(cols):
+                A[r][j] /= lv
+            if show_operations:
+                row_ops.append(f"Divide row {r} by {lv}")
+
+            for i in range(rows):
+                if i != r:
+                    lv = A[i][lead]
+                    for j in range(cols):
+                        A[i][j] -= lv * A[r][j]
+                    if show_operations:
+                        row_ops.append(f"Row {i} = Row {i} - {lv} * Row {r}")
+
+            lead += 1
+
+        return A, row_ops if show_operations else A
+    
+    def are_linearly_independent(self, vectors):
+        matrix = Matrix.from_vectors(vectors)
+        return matrix.rank() == len(vectors)
+    
+    def dimension_of_subspace(self, vectors):
+        matrix = Matrix.from_vectors(vectors)
+        return matrix.rank()
+
+    def basis_for_span(self, vectors):
+        matrix = Matrix.from_vectors(vectors)
+        return vectors[:matrix.rank()]  # The first `rank()` vectors form the basis
+    
+    def rank_factorization(self):
+        rows, cols = self.rows, self.cols
+        rank = self.rank()
+        U = [self.row(i) for i in range(rank)]
+        S = [[0 if i != j else 1 for j in range(rank)] for i in range(rank)]
+        Vt = [[self.get(i, j) for j in range(cols)] for i in range(rank)]
+        return Matrix(self.field, rank, rank, [val for row in S for val in row]), Matrix(self.field, rows, rank, [val for row in U for val in row]), Matrix(self.field, rank, cols, [val for row in Vt for val in row])
+    
+    def lu_decomposition(self):
+        rows, cols = self.rows, self.cols
+        if not self.is_square():
+            raise ValueError("LU decomposition is only valid for square matrices.")
+
+        A = [row[:] for row in self._convert_to_2d()]
+        L = [[0] * cols for _ in range(rows)]
+        U = [[0] * cols for _ in range(rows)]
+
+        for i in range(rows):
+            for j in range(i, cols):
+                U[i][j] = A[i][j] - sum(L[i][k] * U[k][j] for k in range(i))
+            for j in range(i + 1, rows):
+                L[j][i] = (A[j][i] - sum(L[j][k] * U[k][i] for k in range(i))) / U[i][i]
+        return Matrix(self.field, rows, cols, [x for row in L for x in row]), Matrix(self.field, rows, cols, [x for row in U for x in row])
+    
+    def plu_decomposition(self):
+        rows, cols = self.rows, self.cols
+        if not self.is_square():
+            raise ValueError("PLU decomposition is only valid for square matrices.")
+
+        A = [row[:] for row in self._convert_to_2d()]
+        P = [[1 if i == j else 0 for j in range(cols)] for i in range(rows)]
+        L = [[0] * cols for _ in range(rows)]
+        U = [[0] * cols for _ in range(rows)]
+
+        for i in range(rows):
+            # Pivoting
+            max_row = max(range(i, rows), key=lambda r: abs(A[r][i]))
+            if max_row != i:
+                A[i], A[max_row] = A[max_row], A[i]
+                P[i], P[max_row] = P[max_row], P[i]
+
+            for j in range(i, cols):
+                U[i][j] = A[i][j] - sum(L[i][k] * U[k][j] for k in range(i))
+            for j in range(i + 1, rows):
+                L[j][i] = (A[j][i] - sum(L[j][k] * U[k][i] for k in range(i))) / U[i][i]
+
+        return Matrix(self.field, rows, cols, [x for row in P for x in row]), Matrix(self.field, rows, cols, [x for row in L for x in row]), Matrix(self.field, rows, cols, [x for row in U for x in row])
+    
+
+# === QUESTION 4 ===
+
+class LinearSystem:
+    def __init__(self, A, b):
+        # A is a matrix, b is a vector
+        self.A = A
+        self.b = b
+        
+        if len(A) != len(b):
+            raise ValueError("Incompatible dimensions: number of rows in A must match the length of b.")
+    
+    def is_consistent(self):
+        # Check if the system is consistent using Gaussian elimination or rank check
+        augmented_matrix = [row + [self.b[i]] for i, row in enumerate(self.A)]
+        rank_A = self.rank(self.A)
+        rank_augmented = self.rank(augmented_matrix)
+        
+        return rank_A == rank_augmented
+    
+    def rank(self, matrix):
+        # Find rank of the matrix using Gaussian elimination (simplified version)
+        matrix_copy = [row[:] for row in matrix]  # make a copy to not modify original matrix
+        row_count = len(matrix_copy)
+        col_count = len(matrix_copy[0])
+        
+        rank = 0
+        for i in range(min(row_count, col_count)):
+            if matrix_copy[i][i] != 0:
+                for j in range(i + 1, row_count):
+                    if matrix_copy[j][i] != 0:
+                        scale = matrix_copy[j][i] / matrix_copy[i][i]
+                        for k in range(i, col_count):
+                            matrix_copy[j][k] -= scale * matrix_copy[i][k]
+                rank += 1
+        return rank
+    
+    def gaussian_elimination(self):
+        # Solves the system using Gaussian elimination
+        augmented_matrix = [row + [self.b[i]] for i, row in enumerate(self.A)]
+        row_count = len(augmented_matrix)
+        col_count = len(augmented_matrix[0])
+        
+        for i in range(min(row_count, col_count) - 1):
+            for j in range(i + 1, row_count):
+                if augmented_matrix[j][i] != 0:
+                    scale = augmented_matrix[j][i] / augmented_matrix[i][i]
+                    for k in range(i, col_count):
+                        augmented_matrix[j][k] -= scale * augmented_matrix[i][k]
+        
+        solution = [0] * row_count
+        for i in range(row_count - 1, -1, -1):
+            solution[i] = augmented_matrix[i][-1] / augmented_matrix[i][i]
+            for j in range(i - 1, -1, -1):
+                augmented_matrix[j][-1] -= augmented_matrix[j][i] * solution[i]
+        
+        return solution
+    
+    def rref(self):
+        augmented_matrix = [row + [self.b[i]] for i, row in enumerate(self.A)]
+        row_count = len(augmented_matrix)
+        col_count = len(augmented_matrix[0])
+        
+        for i in range(min(row_count, col_count)):
+            pivot = augmented_matrix[i][i]
+            if pivot != 0:
+                for j in range(i + 1, row_count):
+                    if augmented_matrix[j][i] != 0:
+                        scale = augmented_matrix[j][i] / pivot
+                        for k in range(i, col_count):
+                            augmented_matrix[j][k] -= scale * augmented_matrix[i][k]
+        
+        return augmented_matrix
+    
+    def plu_decomposition(self):
+        # Perform LU decomposition manually
+        n = len(self.A)
+        P = [[1 if i == j else 0 for j in range(n)] for i in range(n)]  # Identity matrix for P
+        L = [[0 if i != j else 1 for j in range(n)] for i in range(n)]  # Identity matrix for L
+        U = [row[:] for row in self.A]  # Copy of A to form U
+        
+        for i in range(n):
+            # Pivoting: find the row with the largest value in column i
+            max_row = max(range(i, n), key=lambda r: abs(U[r][i]))
+            if i != max_row:
+                # Swap rows in U and P
+                U[i], U[max_row] = U[max_row], U[i]
+                P[i], P[max_row] = P[max_row], P[i]
+            
+            # Eliminate below pivot
+            for j in range(i + 1, n):
+                if U[j][i] != 0:
+                    factor = U[j][i] / U[i][i]
+                    L[j][i] = factor
+                    for k in range(i, n):
+                        U[j][k] -= factor * U[i][k]
+        
+        # Now, solve the system using PLU
+        # Step 1: Solve Ly = Pb (forward substitution)
+        y = [0] * n
+        for i in range(n):
+            y[i] = self.b[i] - sum(L[i][j] * y[j] for j in range(i))
+        
+        # Step 2: Solve Ux = y (back substitution)
+        x = [0] * n
+        for i in range(n - 1, -1, -1):
+            x[i] = (y[i] - sum(U[i][j] * x[j] for j in range(i + 1, n))) / U[i][i]
+        
+        return x
+
+
+class VectorSet:
+    def __init__(self, vectors):
+        self.vectors = vectors
+    
+    def span(self):
+        # Return the span of vectors in a set by checking if they are linearly independent
+        matrix = [v for v in self.vectors]
+        rank = self.rank(matrix)
+        return rank == len(self.vectors)
+    
+    def rank(self, matrix):
+        # Calculate rank of the matrix using Gaussian elimination (simplified)
+        matrix_copy = [row[:] for row in matrix]  # make a copy to not modify original matrix
+        row_count = len(matrix_copy)
+        col_count = len(matrix_copy[0])
+        
+        rank = 0
+        for i in range(min(row_count, col_count)):
+            if matrix_copy[i][i] != 0:
+                for j in range(i + 1, row_count):
+                    if matrix_copy[j][i] != 0:
+                        scale = matrix_copy[j][i] / matrix_copy[i][i]
+                        for k in range(i, col_count):
+                            matrix_copy[j][k] -= scale * matrix_copy[i][k]
+                rank += 1
+        return rank
+    
+    def is_subspace(self, other):
+        # Check if span of self is a subspace of the span of another set of vectors
+        self_rank = self.rank(self.vectors)
+        other_rank = self.rank(other.vectors)
+        
+        return self_rank <= other_rank
+
+        
+    

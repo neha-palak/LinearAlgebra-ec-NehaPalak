@@ -1,6 +1,8 @@
 from ques import ComplexNumber
 from ques import Vector
 from ques import Matrix
+from ques import LinearSystem
+from ques import VectorSet
 
 def main():
     # (a) ComplexNumber Examples
@@ -20,6 +22,7 @@ def main():
     print("Vector 1:", v1)
     print("Vector 2:", v2)
     print("Vector Addition:", v1 + v2)
+    print("Length of vector 1:", v1.length)
 
     # (c) Matrix Initialization Examples
     print("\n=== Matrices ===")
@@ -68,6 +71,74 @@ def main():
     print("Has LU Decomposition?", m1.has_lu_decomposition())
     print("Is Scalar?", m1.is_scalar())
     print("Is Identity?", m1.is_identity())
+
+    #QUESTION 3
+    # Elementary Matrix Operations
+
+    print("\n=== Elementary Matrix Operations ===")
+    
+    # LU Decomposition
+    try:
+        L, U = m1.lu_decomposition()
+        print("LU Decomposition - L:")
+        print(L)
+        print("LU Decomposition - U:")
+        print(U)
+    except ValueError as e:
+        print("Error in LU Decomposition:", e)
+
+    # PLU Decomposition
+    try:
+        P, L, U = m1.plu_decomposition()
+        print("PLU Decomposition - P:")
+        print(P)
+        print("PLU Decomposition - L:")
+        print(L)
+        print("PLU Decomposition - U:")
+        print(U)
+    except ValueError as e:
+        print("Error in PLU Decomposition:", e)
+
+    # Reduced Row Echelon Form (RREF)
+    rref, row_ops = m1.rref()
+    print("Reduced Row Echelon Form (RREF):")
+    print(rref)
+    print("Row Operations to achieve RREF:")
+    print(row_ops)
+
+    # Rank and Nullity
+    print("Size of m1:", m1.size())
+    print("Rank of m1:", m1.rank())
+    print("Nullity of m1:", m1.nullity())
+
+
+# QUESTION 4
+
+    # (a) System of Linear Equations Example
+    A = [[2, 3, -1], [4, -1, 2], [1, 2, 3]]
+    b = [5, 6, 7]
+    system = LinearSystem(A, b)
+    
+    print("Is the system consistent?", system.is_consistent())
+    if system.is_consistent():
+        solution = system.gaussian_elimination()
+        print("Solution using Gaussian Elimination:", solution)
+    
+    # (b) Subspace Example
+    S1 = [[1, 0], [0, 1]]
+    S2 = [[1, 1], [1, 0]]
+    set1 = VectorSet(S1)
+    set2 = VectorSet(S2)
+    print("Is span of S1 a subspace of span of S2?", set1.is_subspace(set2))
+    
+    # (c) Augmented matrix and RREF solution
+    print("Augmented matrix and RREF:")
+    print(system.rref())
+    
+    # (d) PLU Decomposition for solving system
+    print("Solution using PLU Decomposition:")
+    solution_plu = system.plu_decomposition()
+    print(solution_plu)
 
 
 if __name__ == "__main__":
